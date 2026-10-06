@@ -7,7 +7,8 @@
 //  5. with a newer build (B) in the update feed the copy offers Update, and clicking it installs
 //     B silently and opens it.
 // The installers and update-win.json are in assets/ (the workflow downloads them from a draft
-// release); screenshots and logs go to smoke-out/.
+// release); screenshots and logs go to smoke-out/. With only the feed's own installer (a release
+// about to be published) there is nothing to update to, and step 5 is left out.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -29,10 +30,11 @@ const fail = (why) => {
 const installers = readdirSync(assets).filter((n) => /^QuPai-.*-Setup-x64\.exe$/.test(n)).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
 const feed = JSON.parse(readFileSync(join(assets, "update-win.json"), "utf8"));
 const older = installers.find((n) => !n.includes(feed.version));
-if (!older) fail(`assets/ needs an installer older than the feed's ${feed.version}: ${installers.join(", ")}`);
+const first = older ?? installers.find((n) => n.includes(feed.version));
+if (!first) fail(`assets/ has no installer: ${readdirSync(assets).join(", ")}`);
 
-step(`install ${older} silently`);
-const r = spawnSync(join(assets, older), ["/S"], { stdio: "inherit" });
+step(`install ${first} silently`);
+const r = spawnSync(join(assets, first), ["/S"], { stdio: "inherit" });
 if (r.status !== 0) fail(`the installer exited ${r.status}`);
 const programs = join(process.env.LOCALAPPDATA, "Programs");
 const dir = readdirSync(programs).map((d) => join(programs, d)).find((d) => existsSync(join(d, "QuPai.exe")));
@@ -97,6 +99,10 @@ for (let i = 0; i < 40 && !stopped; i++) {
 if (!stopped) fail("the Runtime still answers after QuPai quit");
 console.log("the Runtime stopped");
 model.close();
+if (!older) {
+  console.log(`\nALL PASSED (installed in ${dir}; no older build to update from)`);
+  process.exit(0);
+}
 
 step(`update to ${feed.version} (${feed.build})`);
 const feedServer = createServer((req, res) => {

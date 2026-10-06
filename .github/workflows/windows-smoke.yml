@@ -1,6 +1,7 @@
 # QuPai for Windows, installed and used on a real Windows (smoke/windows.mjs): install, the start
 # page, a turn on this PC that runs a command, the Runtime stopping, and a self-update. The build
-# under test is a draft release's assets: two installers (an older and the feed's) and update-win.json.
+# under test is a draft release's assets: the feed's installer and update-win.json, and for the update
+# step an older installer whose feed is this runner's (http://127.0.0.1:8765).
 name: windows-smoke
 on:
   workflow_dispatch:
@@ -26,7 +27,7 @@ jobs:
         run: |
           New-Item -ItemType Directory assets | Out-Null
           $assets = gh api "repos/${{ github.repository }}/releases/${{ inputs.release_id }}/assets" | ConvertFrom-Json
-          foreach ($a in $assets) {
+          foreach ($a in $assets | Where-Object { $_.name -like "*.exe" -or $_.name -eq "update-win.json" }) {
             curl.exe -sSL -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/octet-stream" -o "assets/$($a.name)" "https://api.github.com/repos/${{ github.repository }}/releases/assets/$($a.id)"
           }
           Get-ChildItem assets
