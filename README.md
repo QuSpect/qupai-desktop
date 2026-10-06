@@ -35,8 +35,14 @@ Run the installer. It installs QuPai for you (no administrator needed) and adds 
 menu. The beta is not code-signed yet, so Windows SmartScreen may say it protected your PC: click
 **More info**, then **Run anyway**.
 
-On Windows QuPai works with QuPai Cloud: sign in with your QuPai account. Working on the computer
-itself is Mac-only for now. To update, download the newest installer and run it over the old one.
+QuPai asks how you want to work, as on a Mac: **QuPai Cloud**, or **This PC** with your own model
+key. On this PC the agent's commands run in Git Bash if you have
+[Git for Windows](https://git-scm.com/download/win) (recommended), otherwise in PowerShell.
+Unlike on a Mac, **nothing confines those commands to the conversation's folder yet**: they run
+with your permissions, so choose folders you trust, and keep **Approve for me** or **Ask for
+approval** on.
+
+New betas arrive in the app, as on a Mac: an **Update** button appears beside your avatar.
 
 ## Found a problem?
 
