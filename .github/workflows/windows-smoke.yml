@@ -1,0 +1,40 @@
+# QuPai for Windows, installed and used on a real Windows (smoke/windows.mjs): install, the start
+# page, a turn on this PC that runs a command, the Runtime stopping, and a self-update. The build
+# under test is a draft release's assets: two installers (an older and the feed's) and update-win.json.
+name: windows-smoke
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: "The draft release holding the test build"
+        required: true
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Download the test build
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory assets | Out-Null
+          $assets = gh api "repos/${{ github.repository }}/releases/${{ inputs.release_id }}/assets" | ConvertFrom-Json
+          foreach ($a in $assets) {
+            curl.exe -sSL -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/octet-stream" -o "assets/$($a.name)" "https://api.github.com/repos/${{ github.repository }}/releases/assets/$($a.id)"
+          }
+          Get-ChildItem assets
+      - run: npm install --no-save playwright-core@1.63
+        working-directory: smoke
+      - run: node smoke/windows.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-out
+          path: smoke-out/
