@@ -3,12 +3,13 @@
 //  2. the first launch offers QuPai Cloud or this PC, and says commands aren't sandboxed;
 //  3. on this PC, with a model service that is a fake on this runner (fake-model.mjs), a message
 //     makes the agent run a Bash command (in Git Bash) that writes a file in the chosen folder;
-//  4. quitting stops the Runtime;
-//  5. with a newer build (B) in the update feed the copy offers Update, and clicking it installs
+//  4. the side panel opens freely and shows a web page (a <webview>);
+//  5. quitting stops the Runtime;
+//  6. with a newer build (B) in the update feed the copy offers Update, and clicking it installs
 //     B silently and opens it.
 // The installers and update-win.json are in assets/ (the workflow downloads them from a draft
 // release); screenshots and logs go to smoke-out/. With only the feed's own installer (a release
-// about to be published) there is nothing to update to, and step 5 is left out.
+// about to be published) there is nothing to update to, and step 6 is left out.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -84,6 +85,26 @@ await page.screenshot({ path: join(out, "3-after-turn.png") });
 if (end.status !== "succeeded") fail(`the turn ended ${end.status}`);
 if (written !== "hello-from-windows") fail("the command did not write out.txt in the folder");
 if (!/Git Bash/.test(system)) fail("the model was not told its commands run in Git Bash on Windows");
+
+step("the side panel: a New tab, then a web page");
+const toggle = page.locator('.topbar button[aria-label="Show the preview pane"]');
+if (await toggle.count()) {
+  await toggle.click();
+  await page.waitForSelector('[data-testid="preview-launcher"]', { timeout: 15_000 });
+  await page.fill(".newtab .web-address", "example.com");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector('[data-testid="preview-web"] webview', { timeout: 15_000 });
+  let label = "";
+  for (let i = 0; i < 40 && !/Example Domain/.test(label); i++) {
+    await sleep(500);
+    label = await page.locator(".preview-pane [role='tab'][aria-selected='true']").innerText().catch(() => "");
+  }
+  await page.screenshot({ path: join(out, "3b-web-tab.png") });
+  console.log(`web tab: ${label}`);
+  if (!/Example Domain/.test(label)) fail("the side panel's web page did not load");
+} else {
+  console.log("(this build has no free side panel)");
+}
 
 step("quitting stops the Runtime");
 await app.close();
